@@ -1,619 +1,542 @@
-# 🗄️ Database Schema Documentation
+# 🗄️ Database Schema
 
-> **Enhanced Entity Relationship Diagram** - A comprehensive overview of the social platform database architecture
+## Entity Relationships
 
----
-
-## 📋 Table of Contents
-
-- [Core Authentication & Profile](#core-authentication--profile)
-- [Social Graph Relationships](#social-graph-relationships)
-- [Friend Requests](#friend-requests)
-- [Content & Interactions](#content--interactions)
-- [Profile Details](#profile-details)
-- [Notifications & Messaging](#notifications--messaging)
-- [Audit & Activity Tracking](#audit--activity-tracking)
-- [Base Entity](#base-entity)
-- [Enumerations](#enumerations)
-- [Database Indexes](#database-indexes)
-- [Unique Constraints](#unique-constraints)
-- [Relationship Summary](#relationship-summary)
-
----
-
-## 🔐 Core Authentication & Profile
-
+```mermaid
+erDiagram
+    USER ||--|| ACCOUNT : has
+    USER {
+        Long id PK
+        String email UK
+        String password
+        Boolean enabled
+        Boolean accountNonLocked
+        LocalDateTime createdAt
+        LocalDateTime updatedAt
+    }
+    
+    ACCOUNT ||--o{ POST : creates
+    ACCOUNT ||--o{ COMMENT : writes
+    ACCOUNT ||--o{ REACT : performs
+    ACCOUNT ||--o{ FRIENDSHIP : has
+    ACCOUNT ||--o{ FOLLOW : initiates
+    ACCOUNT ||--o{ FRIEND_REQUEST : sends
+    ACCOUNT ||--o{ FRIEND_REQUEST : receives
+    ACCOUNT ||--o{ NOTIFICATION : receives
+    ACCOUNT ||--o{ MESSAGE : sends
+    ACCOUNT ||--o{ MESSAGE : receives
+    ACCOUNT ||--o{ ACTION : performs
+    ACCOUNT ||--|| ACCOUNT_DETAILS : has
+    
+    ACCOUNT {
+        Long id PK
+        Long userId FK "UK"
+        ProfileType profileType
+        String job
+        String profilePictureUrl
+        String backgroundPictureUrl
+        LocalDateTime createdAt
+        LocalDateTime updatedAt
+        Boolean deleted
+    }
+    
+    POST ||--o{ COMMENT : has
+    POST ||--o{ REACT : receives
+    POST {
+        Long id PK
+        Long accountId FK
+        String content "CLOB"
+        String mediaUrl
+        MediaType mediaType
+        Integer commentsCount
+        Integer reactsCount
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    COMMENT {
+        Long id PK
+        Long postId FK
+        Long accountId FK
+        String text
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    REACT {
+        Long id PK
+        Long postId FK
+        Long accountId FK "UK(accountId,postId)"
+        ReactType reactType
+        LocalDateTime createdAt
+    }
+    
+    FRIENDSHIP {
+        Long id PK
+        Long accountId FK "UK(accountId,friendId)"
+        Long friendId FK
+        Boolean mutual
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    FOLLOW {
+        Long id PK
+        Long followerId FK "UK(followerId,followingId)"
+        Long followingId FK
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    FRIEND_REQUEST {
+        Long id PK
+        Long senderId FK
+        Long receiverId FK
+        RequestStatus status
+        Boolean read
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    NOTIFICATION {
+        Long id PK
+        Long accountId FK
+        NotificationType type
+        String message
+        String link
+        Boolean read
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    MESSAGE {
+        Long id PK
+        Long senderId FK
+        Long receiverId FK
+        String content "TEXT"
+        Boolean read
+        String attachmentUrl
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    ACTION {
+        Long id PK
+        Long accountId FK
+        ActionType actionType
+        String details "TEXT"
+        String ipAddress
+        String userAgent
+        LocalDateTime createdAt
+    }
+    
+    ACCOUNT_DETAILS ||--o{ WORK_EXPERIENCE : contains
+    ACCOUNT_DETAILS {
+        Long id PK
+        Long accountId FK
+        String firstName
+        String lastName
+        String middleName
+        Date dateOfBirth
+        String street
+        String city
+        String state
+        String country
+        String languages "COLLECTION"
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    WORK_EXPERIENCE {
+        Long id PK
+        Long accountDetailsId FK
+        String companyName
+        String title
+        String companyLogo
+        Date startDate
+        Date endDate
+        Boolean present
+        String description "TEXT"
+        LocalDateTime createdAt
+        Boolean deleted
+    }
+    
+    CONTACT {
+        Long id PK
+        Long accountId FK
+        String name
+        String email
+        String phone
+        String message
+        LocalDateTime createdAt
+        Boolean deleted
+    }
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         AUTHENTICATION FLOW                              │
-└─────────────────────────────────────────────────────────────────────────┘
 
-                    ┏━━━━━━━━━━━━━━━━━━━━━┓
-                    ┃       USER          ┃
-                    ┣━━━━━━━━━━━━━━━━━━━━━┫
-                    ┃ 🔑 id (PK)          ┃
-                    ┃ 📧 email (UNIQUE)   ┃
-                    ┃ 🔒 password         ┃
-                    ┃ ✅ enabled          ┃
-                    ┃ 🔓 accountNonLocked ┃
-                    ┃ 📅 createdAt        ┃
-                    ┃ 🔄 updatedAt        ┃
-                    ┗━━━━━━━━┳━━━━━━━━━━━┛
-                             │
-                             │ 1:1 Relationship
-                             ▼
-                    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-                    ┃        ACCOUNT             ┃
-                    ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
-                    ┃ 🔑 id (PK)                 ┃
-                    ┃ 🔗 user_id (FK, UNIQUE)    ┃
-                    ┃ 👤 profileType             ┃
-                    ┃ 💼 job                     ┃
-                    ┃ 🖼️  profilePictureUrl      ┃
-                    ┃ 🎨 backgroundPictureUrl    ┃
-                    ┃ 📦 + BaseEntity fields     ┃
-                    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+## 📊 Data Flow Diagrams
+
+### User Registration & Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthController
+    participant UserService
+    participant AccountService
+    participant UserRepository
+    participant AccountRepository
+    participant PasswordEncoder
+    
+    Client->>AuthController: POST /api/auth/register
+    AuthController->>AuthController: Validate RegisterDTO
+    AuthController->>UserService: registerUser(dto)
+    
+    UserService->>UserService: Check email exists
+    UserService->>PasswordEncoder: encode(password)
+    PasswordEncoder-->>UserService: Encoded password
+    
+    UserService->>UserRepository: save(user)
+    UserRepository-->>UserService: Saved User
+    
+    UserService->>AccountService: createAccount(user)
+    AccountService->>AccountRepository: save(account)
+    AccountRepository-->>AccountService: Saved Account
+    
+    AccountService-->>UserService: Account
+    UserService->>UserService: Map to DTO
+    UserService-->>AuthController: UserResponseDTO
+    AuthController-->>Client: 201 Created
 ```
 
-**Key Points:**
-- Each `USER` has exactly one `ACCOUNT` (1:1 relationship)
-- Email must be unique across the system
-- Account lockout mechanism for security
-- Soft delete capability through BaseEntity
+### Friend Request Workflow
 
----
-
-## 👥 Social Graph Relationships
-
-### Friendship System (Bidirectional)
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      FRIENDSHIP NETWORK                                 │
-└────────────────────────────────────────────────────────────────────────┘
-
-        ┏━━━━━━━━━━━━━━━━━━━━━┓                ┏━━━━━━━━━━━━━━━━━━━━━┓
-        ┃   FRIENDSHIP        ┃                ┃      FOLLOW         ┃
-        ┣━━━━━━━━━━━━━━━━━━━━━┫                ┣━━━━━━━━━━━━━━━━━━━━━┫
-        ┃ 🔑 id (PK)          ┃                ┃ 🔑 id (PK)          ┃
-        ┃ 🔗 account_id (FK)  ┃                ┃ 🔗 follower_id (FK) ┃
-        ┃ 🔗 friend_id (FK)   ┃                ┃ 🔗 following_id(FK) ┃
-        ┃ 🤝 mutual           ┃                ┃ 📦 + BaseEntity     ┃
-        ┃ 📦 + BaseEntity     ┃                ┗━━━━━━━━┳━━━━━━━━━━━┛
-        ┗━━━━━━━━┳━━━━━━━━━━━┛                         │
-                 │                                      │
-                 │ Many                                 │ Many
-                 │                                      │
-         ┌───────┴──────────────────┐          ┌───────┴────────┐
-         │                          │          │                 │
-         ▼                          ▼          ▼                 ▼
-┏━━━━━━━━━━━━━━━┓          ┏━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━┓
-┃   Account     ┃          ┃   Account     ┃  ┃   Account     ┃
-┃ (friendships) ┃          ┃  (friendOf)   ┃  ┃  (following)  ┃
-┗━━━━━━━━━━━━━━━┛          ┗━━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━━┛
-```
-
-**Relationship Types:**
-
-| Type | Description | Cardinality |
-|------|-------------|-------------|
-| **FRIENDSHIP** | Mutual connection between users | Many-to-Many |
-| **FOLLOW** | Unidirectional subscription | Many-to-Many |
-
-**Features:**
-- ✅ Mutual flag indicates reciprocal friendships
-- 🔍 Efficient queries with composite indexes
-- 📊 Track both directions of relationships
-
----
-
-## 📨 Friend Requests
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                     FRIEND REQUEST WORKFLOW                             │
-└────────────────────────────────────────────────────────────────────────┘
-
-                    ┏━━━━━━━━━━━━━━━━━━━━━━━━┓
-                    ┃   FRIEND_REQUEST       ┃
-                    ┣━━━━━━━━━━━━━━━━━━━━━━━━┫
-                    ┃ 🔑 id (PK)             ┃
-                    ┃ 📤 sender_id (FK)      ┃
-                    ┃ 📥 receiver_id (FK)    ┃
-                    ┃ 📊 status (ENUM)       ┃
-                    ┃    • PENDING           ┃
-                    ┃    • ACCEPTED          ┃
-                    ┃    • REJECTED          ┃
-                    ┃ 👁️  read               ┃
-                    ┃ 📦 + BaseEntity        ┃
-                    ┗━━━━━━━━┳━━━━━━━━━━━━━━━┛
-                             │
-                             │ Many
-                             │
-                    ┌────────┴────────┐
-                    │                 │
-                    ▼                 ▼
-          ┏━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━━━━━┓
-          ┃   Account     ┃  ┃    Account      ┃
-          ┃(friendRequest)┃  ┃(receivedRequests┃
-          ┗━━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━━━━━┛
+```mermaid
+sequenceDiagram
+    participant Sender
+    participant FriendController
+    participant FriendRequestService
+    participant FriendshipService
+    participant NotificationService
+    participant Receiver
+    
+    Sender->>FriendController: POST /api/friends/request
+    FriendController->>FriendRequestService: sendRequest(senderId, receiverId)
+    
+    FriendRequestService->>FriendRequestService: Check existing request
+    FriendRequestService->>FriendRequestService: Check already friends
+    FriendRequestService->>FriendRequestService: Create request (PENDING)
+    FriendRequestService->>NotificationService: Create notification
+    NotificationService->>Receiver: FRIEND_REQUEST notification
+    
+    FriendRequestService-->>FriendController: RequestDTO
+    FriendController-->>Sender: 201 Created
+    
+    Note over Receiver: User reviews request
+    
+    Receiver->>FriendController: PUT /api/friends/request/{id}/accept
+    FriendController->>FriendRequestService: acceptRequest(requestId)
+    
+    FriendRequestService->>FriendRequestService: Update status (ACCEPTED)
+    FriendRequestService->>FriendshipService: createFriendship(sender, receiver)
+    FriendshipService->>FriendshipService: Create bidirectional friendship
+    FriendshipService->>FriendshipService: Set mutual=true
+    
+    FriendRequestService->>NotificationService: Notify sender
+    NotificationService->>Sender: REQUEST_ACCEPTED notification
+    
+    FriendRequestService-->>FriendController: Success
+    FriendController-->>Receiver: 200 OK
 ```
 
-**Status Flow:**
+### Post Creation & Interaction Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant PostController
+    participant PostService
+    participant PostRepository
+    participant FollowService
+    participant NotificationService
+    participant Followers
+    
+    User->>PostController: POST /api/posts
+    PostController->>PostController: Validate PostDTO
+    PostController->>PostService: createPost(dto, accountId)
+    
+    PostService->>PostService: Process media upload
+    PostService->>PostService: Set counters to 0
+    PostService->>PostRepository: save(post)
+    PostRepository-->>PostService: Saved Post
+    
+    PostService->>FollowService: getFollowers(accountId)
+    FollowService-->>PostService: List of followers
+    
+    loop For each follower
+        PostService->>NotificationService: Create notification
+        NotificationService->>Followers: NEW_POST notification
+    end
+    
+    PostService-->>PostController: PostResponseDTO
+    PostController-->>User: 201 Created
+    
+    Note over User: Another user reacts to post
+    
+    participant Reactor
+    Reactor->>PostController: POST /api/posts/{id}/react
+    PostController->>PostService: addReact(postId, accountId, type)
+    
+    PostService->>PostService: Check existing react
+    PostService->>PostService: Create/Update react
+    PostService->>PostService: Increment reactsCount
+    PostService->>PostRepository: update(post)
+    
+    PostService->>NotificationService: Notify post owner
+    NotificationService->>User: POST_LIKED notification
+    
+    PostService-->>PostController: ReactDTO
+    PostController-->>Reactor: 200 OK
 ```
-PENDING → ACCEPTED → Creates FRIENDSHIP
+
+### Timeline Feed Generation
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant FeedController
+    participant FeedService
+    participant FollowService
+    participant FriendshipService
+    participant PostService
+    participant Cache
+    
+    User->>FeedController: GET /api/feed
+    FeedController->>FeedService: generateFeed(accountId, page)
+    
+    FeedService->>Cache: Check cached feed
+    
+    alt Cache Hit
+        Cache-->>FeedService: Cached posts
+    else Cache Miss
+        FeedService->>FollowService: getFollowing(accountId)
+        FollowService-->>FeedService: Following list
+        
+        FeedService->>FriendshipService: getFriends(accountId)
+        FriendshipService-->>FeedService: Friends list
+        
+        FeedService->>FeedService: Combine & deduplicate IDs
+        
+        FeedService->>PostService: getPostsByAccounts(ids, page)
+        PostService-->>FeedService: Posts list
+        
+        FeedService->>FeedService: Sort by createdAt DESC
+        FeedService->>Cache: Store in cache
+    end
+    
+    FeedService->>FeedService: Filter deleted posts
+    FeedService->>FeedService: Map to DTOs
+    FeedService-->>FeedController: Page of PostDTOs
+    FeedController-->>User: 200 OK with posts
+```
+
+### Message Exchange Flow
+
+```mermaid
+sequenceDiagram
+    participant Sender
+    participant MessageController
+    participant MessageService
+    participant MessageRepository
+    participant NotificationService
+    participant WebSocket
+    participant Receiver
+    
+    Sender->>MessageController: POST /api/messages
+    MessageController->>MessageService: sendMessage(dto)
+    
+    MessageService->>MessageService: Validate sender & receiver
+    MessageService->>MessageService: Process attachment
+    MessageService->>MessageService: Set read=false
+    MessageService->>MessageRepository: save(message)
+    MessageRepository-->>MessageService: Saved Message
+    
+    MessageService->>NotificationService: Create notification
+    NotificationService->>Receiver: MESSAGE_RECEIVED notification
+    
+    MessageService->>WebSocket: Emit message event
+    WebSocket->>Receiver: Real-time message
+    
+    MessageService-->>MessageController: MessageDTO
+    MessageController-->>Sender: 201 Created
+    
+    Note over Receiver: User opens conversation
+    
+    Receiver->>MessageController: GET /api/messages/conversation/{senderId}
+    MessageController->>MessageService: getConversation(receiverId, senderId)
+    
+    MessageService->>MessageService: Get messages between users
+    MessageService->>MessageService: Mark as read
+    MessageService->>MessageRepository: update messages
+    
+    MessageService-->>MessageController: List of MessageDTOs
+    MessageController-->>Receiver: 200 OK
+```
+
+### Action Logging & Audit Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Controller
+    participant Service
+    participant AuditService
+    participant ActionRepository
+    participant Request
+    
+    User->>Controller: Any HTTP Request
+    Controller->>Service: Business operation
+    
+    Service->>Service: Execute operation
+    
+    Service->>AuditService: logAction(accountId, actionType, details)
+    
+    AuditService->>Request: Extract IP address
+    Request-->>AuditService: IP address
+    
+    AuditService->>Request: Extract User-Agent
+    Request-->>AuditService: User-Agent string
+    
+    AuditService->>AuditService: Build Action entity
+    AuditService->>ActionRepository: save(action)
+    ActionRepository-->>AuditService: Saved Action
+    
+    AuditService-->>Service: Logged
+    Service-->>Controller: Operation result
+    Controller-->>User: HTTP Response
+```
+
+## 🔍 Key Design Patterns
+
+### Soft Delete Pattern
+```mermaid
+flowchart TD
+    A[Delete Request] --> B{Check Entity Type}
+    B -->|User Content| C[Set deleted = true]
+    B -->|System Data| D[Set deleted = true]
+    C --> E[Set deletedAt = now]
+    D --> E
+    E --> F[Keep in Database]
+    F --> G[Filter in Queries]
+    G --> H{Recovery Needed?}
+    H -->|Yes| I[Set deleted = false]
+    H -->|No| J[Permanent Delete After 30 days]
+```
+
+### Counter Denormalization Pattern
+```mermaid
+flowchart LR
+    A[User Comments on Post] --> B[Save Comment]
+    B --> C[Increment Post.commentsCount]
+    C --> D[Update Post]
+    D --> E[Fast Count Query]
+    
+    F[User Reacts to Post] --> G[Save React]
+    G --> H[Increment Post.reactsCount]
+    H --> I[Update Post]
+    I --> J[No Need for COUNT Query]
+```
+
+## 📈 Database Indexes Strategy
+
+### Timeline Queries
+```sql
+-- Optimized for feed generation
+CREATE INDEX idx_post_account_created ON posts(account_id, created_at DESC);
+
+-- Optimized for follow relationships
+CREATE INDEX idx_follow_follower_created ON follows(follower_id, created_at DESC);
+CREATE INDEX idx_follow_following_created ON follows(following_id, created_at DESC);
+```
+
+### Social Graph Queries
+```sql
+-- Friendship lookups
+CREATE INDEX idx_friendship_account_friend ON friendships(account_id, friend_id);
+CREATE INDEX idx_friendship_friend_account ON friendships(friend_id, account_id);
+
+-- Friend request status
+CREATE INDEX idx_request_receiver_status ON friend_requests(receiver_id, status);
+CREATE INDEX idx_request_sender_status ON friend_requests(sender_id, status);
+```
+
+### Notification Queries
+```sql
+-- Unread notifications
+CREATE INDEX idx_notification_account_read ON notifications(account_id, read);
+CREATE INDEX idx_notification_created ON notifications(created_at DESC);
+```
+
+### Message Queries
+```sql
+-- Conversation loading
+CREATE INDEX idx_message_sender_receiver_created 
+    ON messages(sender_id, receiver_id, created_at DESC);
+
+-- Unread messages
+CREATE INDEX idx_message_receiver_read ON messages(receiver_id, read);
+```
+
+## 🎯 Enumerations Reference
+
+### RequestStatus
+```
+PENDING → ACCEPTED → Creates Friendship
    ↓
 REJECTED (Terminal State)
 ```
 
----
-
-## 📝 Content & Interactions
-
+### ReactType
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      CONTENT MANAGEMENT SYSTEM                          │
-└────────────────────────────────────────────────────────────────────────┘
-
-                    ┏━━━━━━━━━━━━━━━━━━━━━━━━━┓
-                    ┃        POSTS            ┃
-                    ┣━━━━━━━━━━━━━━━━━━━━━━━━━┫
-                    ┃ 🔑 id (PK)              ┃
-                    ┃ 🔗 account_id (FK)      ┃
-                    ┃ 📄 content (CLOB)       ┃
-                    ┃ 🖼️  mediaUrl            ┃
-                    ┃ 🎬 mediaType (ENUM)     ┃
-                    ┃ 💬 commentsCount        ┃
-                    ┃ ❤️  reactsCount         ┃
-                    ┃ 📦 + BaseEntity         ┃
-                    ┗━━━━┳━━━━━━━━━━━┳━━━━━━━━┛
-                         │           │
-              ┌──────────┘           └──────────┐
-              │ 1:Many                    1:Many │
-              ▼                                  ▼
-    ┏━━━━━━━━━━━━━━━━━┓              ┏━━━━━━━━━━━━━━━━━┓
-    ┃   COMMENTS      ┃              ┃     REACTS      ┃
-    ┣━━━━━━━━━━━━━━━━━┫              ┣━━━━━━━━━━━━━━━━━┫
-    ┃ 🔑 id (PK)      ┃              ┃ 🔑 id (PK)      ┃
-    ┃ 🔗 post_id (FK) ┃              ┃ 🔗 post_id (FK) ┃
-    ┃ 🔗 account (FK) ┃              ┃ 🔗 account (FK) ┃
-    ┃ 💭 text         ┃              ┃ 😊 reactType    ┃
-    ┃ 📦 + BaseEntity ┃              ┃    • LIKE       ┃
-    ┗━━━━━━━━━━━━━━━━━┛              ┃    • LOVE       ┃
-                                     ┃    • HAHA       ┃
-                                     ┃    • WOW        ┃
-                                     ┃    • SAD        ┃
-                                     ┃    • ANGRY      ┃
-                                     ┃ 📦 + BaseEntity ┃
-                                     ┗━━━━━━━━━━━━━━━━━┛
+LIKE (👍) | LOVE (❤️) | HAHA (😂)
+WOW (😮) | SAD (😢) | ANGRY (😠)
 ```
 
-**Media Types Supported:**
-- 📷 IMAGE
-- 🎥 VIDEO
-- 🎵 AUDIO
-- 📄 DOCUMENT
-
-**Performance Optimizations:**
-- Denormalized counters (`commentsCount`, `reactsCount`)
-- Indexed by creation date for timeline queries
-- CLOB for large text content
-
----
-
-## 👔 Profile Details
-
+### MediaType
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                    PROFESSIONAL PROFILE SYSTEM                          │
-└────────────────────────────────────────────────────────────────────────┘
-
-            ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-            ┃    ACCOUNT_DETAILS          ┃
-            ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
-            ┃ 🔑 id (PK)                  ┃
-            ┃ 🔗 account_id (FK)          ┃
-            ┃                             ┃
-            ┃ 📋 Embedded Objects:        ┃
-            ┃ ┌─────────────────────────┐ ┃
-            ┃ │ 👤 personalInfo         │ ┃
-            ┃ │   • firstName           │ ┃
-            ┃ │   • lastName            │ ┃
-            ┃ │   • middleName          │ ┃
-            ┃ │   • dateOfBirth         │ ┃
-            ┃ └─────────────────────────┘ ┃
-            ┃ ┌─────────────────────────┐ ┃
-            ┃ │ 🏠 address              │ ┃
-            ┃ │   • street              │ ┃
-            ┃ │   • city                │ ┃
-            ┃ │   • state               │ ┃
-            ┃ │   • country             │ ┃
-            ┃ └─────────────────────────┘ ┃
-            ┃                             ┃
-            ┃ 🌍 languages (COLLECTION)   ┃
-            ┃ 📦 + BaseEntity             ┃
-            ┗━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┛
-                        │
-                        │ 1:Many
-                        ▼
-            ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-            ┃    WORK_EXPERIENCE          ┃
-            ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
-            ┃ 🔑 id (PK)                  ┃
-            ┃ 🔗 account_details_id (FK)  ┃
-            ┃ 🏢 companyName              ┃
-            ┃ 💼 title                    ┃
-            ┃ 🖼️  companyLogo             ┃
-            ┃ 📅 startDate                ┃
-            ┃ 📅 endDate                  ┃
-            ┃ ✅ present                  ┃
-            ┃ 📝 description (TEXT)       ┃
-            ┃ 📦 + BaseEntity             ┃
-            ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+IMAGE | VIDEO | AUDIO | DOCUMENT
 ```
 
-**Embedded Objects:**
-- **PersonalInfo**: Core identity information
-- **Address**: Geographic location data
-- **Languages**: Multi-valued collection
-
----
-
-## 📬 Notifications & Messaging
-
+### NotificationType
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                   COMMUNICATION INFRASTRUCTURE                          │
-└────────────────────────────────────────────────────────────────────────┘
-
-  ┏━━━━━━━━━━━━━━━━━━━━━┓            ┏━━━━━━━━━━━━━━━━━━━━━┓
-  ┃   NOTIFICATION      ┃            ┃      MESSAGE        ┃
-  ┣━━━━━━━━━━━━━━━━━━━━━┫            ┣━━━━━━━━━━━━━━━━━━━━━┫
-  ┃ 🔑 id (PK)          ┃            ┃ 🔑 id (PK)          ┃
-  ┃ 🔗 account_id (FK)  ┃            ┃ 📤 sender_id (FK)   ┃
-  ┃ 🏷️  type (ENUM)     ┃            ┃ 📥 receiver_id (FK) ┃
-  ┃    • FRIEND_REQUEST ┃            ┃ 💬 content (TEXT)   ┃
-  ┃    • POST_LIKED     ┃            ┃ 👁️  read            ┃
-  ┃    • NEW_FOLLOWER   ┃            ┃ 📎 attachmentUrl    ┃
-  ┃    • COMMENT_ADDED  ┃            ┃ 📦 + BaseEntity     ┃
-  ┃    • MENTION        ┃            ┗━━━━━━━━┳━━━━━━━━━━━┛
-  ┃ 📝 message          ┃                     │
-  ┃ 🔗 link             ┃                     │ Many
-  ┃ 👁️  read            ┃                     │
-  ┃ 📦 + BaseEntity     ┃            ┌────────┴────────┐
-  ┗━━━━━━━━┳━━━━━━━━━━━┛            │                 │
-           │                         ▼                 ▼
-           │ Many            ┏━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━━┓
-           │                 ┃  Account   ┃  ┃   Account   ┃
-  ┌────────┴────────┐        ┃(sent       ┃  ┃(received    ┃
-  │                 │        ┃ Messages)  ┃  ┃ Messages)   ┃
-  ▼                 │        ┗━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━━┛
-┏━━━━━━━━━━━━━━┓    │
-┃   Account    ┃    │
-┃(notifications┃    │
-┗━━━━━━━━━━━━━━┛    │
+FRIEND_REQUEST | POST_LIKED | POST_COMMENTED
+NEW_FOLLOWER | MENTION | MESSAGE_RECEIVED
 ```
 
-**Notification Types:**
-- 🤝 FRIEND_REQUEST
-- ❤️ POST_LIKED
-- 👤 NEW_FOLLOWER
-- 💬 COMMENT_ADDED
-- @️⃣ MENTION
-- 🔔 And more...
-
----
-
-## 📊 Audit & Activity Tracking
-
+### ActionType (30+ types)
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        AUDIT LOG SYSTEM                                 │
-└────────────────────────────────────────────────────────────────────────┘
-
-  ┏━━━━━━━━━━━━━━━━━━━━━┓            ┏━━━━━━━━━━━━━━━━━━━━━┓
-  ┃      ACTION         ┃            ┃      CONTACT        ┃
-  ┣━━━━━━━━━━━━━━━━━━━━━┫            ┣━━━━━━━━━━━━━━━━━━━━━┫
-  ┃ 🔑 id (PK)          ┃            ┃ 🔑 id (PK)          ┃
-  ┃ 🔗 account_id (FK)  ┃            ┃ 🔗 account_id (FK)  ┃
-  ┃ 🎯 actionType       ┃            ┃ 👤 name             ┃
-  ┃    • LOGIN          ┃            ┃ 📧 email            ┃
-  ┃    • LOGOUT         ┃            ┃ 📱 phone            ┃
-  ┃    • POST_CREATED   ┃            ┃ 💬 message          ┃
-  ┃    • FRIEND_REQUEST ┃            ┃ 📦 + BaseEntity     ┃
-  ┃    • PROFILE_UPDATE ┃            ┗━━━━━━━━━━━━━━━━━━━━━┛
-  ┃    • (30+ types)    ┃
-  ┃ 📝 details (TEXT)   ┃
-  ┃ 🌐 ipAddress        ┃
-  ┃ 🖥️  userAgent       ┃
-  ┃ 📦 + BaseEntity     ┃
-  ┗━━━━━━━━━━━━━━━━━━━━━┛
+Authentication: LOGIN, LOGOUT
+Content: POST_CREATED, POST_UPDATED, POST_DELETED
+Social: FRIEND_REQUEST_SENT, FRIEND_REQUEST_ACCEPTED
+Profile: PROFILE_UPDATED, SETTINGS_CHANGED
+Messaging: MESSAGE_SENT, MESSAGE_READ
 ```
 
-**Tracked Actions:**
-- 🔐 Authentication events
-- 📝 Content creation/modification
-- 👥 Social interactions
-- ⚙️ Settings changes
-- 🔍 Search queries
-
----
-
-## 🏗️ Base Entity
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│            BASE ENTITY (Inherited by All Entities)                      │
-└────────────────────────────────────────────────────────────────────────┘
-
-                    ┏━━━━━━━━━━━━━━━━━━━━━━━━┓
-                    ┃    BASE_ENTITY         ┃
-                    ┣━━━━━━━━━━━━━━━━━━━━━━━━┫
-                    ┃ 🔑 id (PK)             ┃
-                    ┃ 📅 createdAt           ┃
-                    ┃ 🔄 updatedAt           ┃
-                    ┃ 🗑️  deleted            ┃
-                    ┃ ❌ deletedAt           ┃
-                    ┃ 👤 createdBy           ┃
-                    ┃ 👤 lastModifiedBy      ┃
-                    ┗━━━━━━━━━━━━━━━━━━━━━━━━┛
-```
-
-**Features:**
-- ✅ Automatic timestamp management
-- 🗑️ Soft delete support
-- 👤 Audit trail (who created/modified)
-- 🔄 Version tracking ready
-
----
-
-## 🏷️ Enumerations
-
-### Role Enumeration
-```java
-enum Role {
-    ROLE_USER,
-    ROLE_ADMIN
-}
-```
-
-### Request Status
-```java
-enum RequestStatus {
-    PENDING,
-    ACCEPTED,
-    REJECTED
-}
-```
-
-### React Types
-```java
-enum ReactType {
-    LIKE,    // 👍
-    LOVE,    // ❤️
-    HAHA,    // 😂
-    WOW,     // 😮
-    SAD,     // 😢
-    ANGRY    // 😠
-}
-```
-
-### Profile & Media Types
-```java
-enum ProfileType { /* ... */ }
-enum AccountJobType { /* ... */ }
-enum Language { /* ... */ }
-enum MediaType {
-    IMAGE,
-    VIDEO,
-    AUDIO,
-    DOCUMENT
-}
-```
-
-### Action Types (30+ types)
-```java
-enum ActionType {
-    LOGIN,
-    LOGOUT,
-    POST_CREATED,
-    POST_UPDATED,
-    POST_DELETED,
-    COMMENT_CREATED,
-    FRIEND_REQUEST_SENT,
-    FRIEND_REQUEST_ACCEPTED,
-    PROFILE_UPDATED,
-    MESSAGE_SENT,
-    // ... and more
-}
-```
-
-### Notification Types
-```java
-enum NotificationType {
-    FRIEND_REQUEST,
-    POST_LIKED,
-    POST_COMMENTED,
-    NEW_FOLLOWER,
-    MENTION,
-    MESSAGE_RECEIVED
-}
-```
-
----
-
-## 🔍 Database Indexes
-
-### High-Performance Indexes
-
-#### **Accounts**
-```sql
-CREATE INDEX idx_profile_type ON accounts(profile_type);
-CREATE INDEX idx_job_type ON accounts(job_type);
-CREATE INDEX idx_user_id ON accounts(user_id);
-```
-
-#### **Posts** (Timeline Queries)
-```sql
-CREATE INDEX idx_account_created ON posts(account_id, created_at DESC);
-CREATE INDEX idx_deleted ON posts(deleted);
-CREATE INDEX idx_media_type ON posts(media_type);
-```
-
-#### **Comments** (Nested Loading)
-```sql
-CREATE INDEX idx_post_created ON comments(post_id, created_at DESC);
-CREATE INDEX idx_account ON comments(account_id);
-```
-
-#### **Friend Requests** (Pending Requests)
-```sql
-CREATE INDEX idx_receiver_status ON friend_requests(receiver_id, status);
-CREATE INDEX idx_sender_status ON friend_requests(sender_id, status);
-CREATE INDEX idx_status_read ON friend_requests(status, read);
-```
-
-#### **Friendships** (Social Graph)
-```sql
-CREATE INDEX idx_account_friend ON friendships(account_id, friend_id);
-CREATE INDEX idx_friend_account ON friendships(friend_id, account_id);
-CREATE INDEX idx_created_at ON friendships(created_at DESC);
-```
-
-#### **Follows** (Feed Generation)
-```sql
-CREATE INDEX idx_follower ON follows(follower_id, created_at DESC);
-CREATE INDEX idx_following ON follows(following_id, created_at DESC);
-```
-
-#### **Notifications** (Unread Count)
-```sql
-CREATE INDEX idx_account_read ON notifications(account_id, read);
-CREATE INDEX idx_created_at ON notifications(created_at DESC);
-CREATE INDEX idx_type ON notifications(type);
-```
-
-#### **Messages** (Conversation Loading)
-```sql
-CREATE INDEX idx_sender_receiver_created 
-    ON messages(sender_id, receiver_id, created_at DESC);
-CREATE INDEX idx_receiver_read ON messages(receiver_id, read);
-CREATE INDEX idx_created_at ON messages(created_at DESC);
-```
-
-#### **Actions** (Audit Logs)
-```sql
-CREATE INDEX idx_account_action_type ON actions(account_id, action_type);
-CREATE INDEX idx_created_at ON actions(created_at DESC);
-CREATE INDEX idx_action_type ON actions(action_type);
-```
-
----
-
-## 🔒 Unique Constraints
-
-```sql
--- Prevent duplicate users
-ALTER TABLE users ADD CONSTRAINT uk_email UNIQUE (email);
-
--- One account per user
-ALTER TABLE accounts ADD CONSTRAINT uk_user_id UNIQUE (user_id);
-
--- One react per user per post
-ALTER TABLE reacts ADD CONSTRAINT uk_account_post 
-    UNIQUE (account_id, post_id);
-
--- Prevent duplicate friendships
-ALTER TABLE friendships ADD CONSTRAINT uk_account_friend 
-    UNIQUE (account_id, friend_id);
-
--- Prevent duplicate follows
-ALTER TABLE follows ADD CONSTRAINT uk_follower_following 
-    UNIQUE (follower_id, following_id);
-```
-
----
-
-## 📊 Relationship Summary
-
-### One-to-One Relationships
-| Parent | Child | Description |
-|--------|-------|-------------|
-| User | Account | Authentication to Profile |
-
-### One-to-Many Relationships
-| Parent | Child | Description |
-|--------|-------|-------------|
-| Account | Posts | User's content |
-| Account | Comments | User's comments |
-| Account | Reacts | User's reactions |
-| Account | FriendRequests (sent) | Outgoing requests |
-| Account | FriendRequests (received) | Incoming requests |
-| Account | Actions | Activity log |
-| Account | Contacts | Contact form submissions |
-| Account | Friendships | Friend connections |
-| Account | Follows | Following relationships |
-| Account | Notifications | User notifications |
-| Account | Messages (sent) | Sent messages |
-| Account | Messages (received) | Received messages |
-| AccountDetails | WorkExperiences | Career history |
-| Post | Comments | Post comments |
-| Post | Reacts | Post reactions |
-
-### Embedded Objects
-| Entity | Embeddable | Fields |
-|--------|------------|--------|
-| AccountDetails | PersonalInfo | firstName, lastName, middleName, dateOfBirth |
-| AccountDetails | Address | street, city, state, country |
-
----
-
-## 📈 Database Statistics
+## 📊 Database Statistics
 
 | Metric | Count |
 |--------|-------|
 | **Total Entities** | 15 |
 | **Total Relationships** | 20+ |
 | **Total Indexes** | 25+ |
-| **Total Unique Constraints** | 6 |
+| **Unique Constraints** | 6 |
 | **Enum Types** | 8 |
-| **Embedded Objects** | 2 |
+| **Soft Delete Enabled** | All Entities |
 
----
+## 🚀 Performance Optimizations
 
-## 🎯 Design Principles
-
-### ✅ Best Practices Implemented
-
-1. **Soft Deletes**: All entities inherit `deleted` flag for data recovery
-2. **Audit Trail**: Automatic tracking of creation and modification
-3. **Denormalization**: Counter fields for performance (e.g., `commentsCount`)
-4. **Composite Indexes**: Optimized for common query patterns
-5. **Unique Constraints**: Prevent duplicate data at database level
-6. **Embeddables**: Group related fields logically
-7. **Enums**: Type-safe status and category management
-
-### 🚀 Performance Optimizations
-
-- **Indexed Foreign Keys**: Fast joins and lookups
+- **Denormalized Counters**: `commentsCount`, `reactsCount` on posts
 - **Composite Indexes**: Multi-column query optimization
-- **Covering Indexes**: Include frequently selected columns
-- **Timestamp Indexes**: Efficient date range queries
-- **Read Flag Indexes**: Quick unread count queries
-
----
-
-## 📝 Notes
-
-> **Version**: 1.0   
-> **Database**: Oracle  
-> **ORM**: JPA/Hibernate Compatible  
-
----
-
-<div align="center">
-
-
-[⬆ Back to Top](#️-database-schema-documentation)
-
-</div>
+- **Soft Deletes**: Data recovery without backup restoration
+- **Bidirectional Relationships**: Optimized friend/follow queries
+- **Read Flags**: Quick unread count calculations
+- **Timestamp Indexes**: Efficient timeline generation

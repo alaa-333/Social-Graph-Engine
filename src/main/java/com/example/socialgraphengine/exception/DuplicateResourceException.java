@@ -16,7 +16,4 @@ public class DuplicateResourceException extends BusinessException {
         this(errorCode.getMessage() , errorCode);
     }
 
-    public DuplicateResourceException(String message, Throwable cause) {
-        super(message, cause);
-    }
 }

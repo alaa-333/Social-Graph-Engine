@@ -47,6 +47,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e , HttpServletRequest request) {
 
+        log.error("MethodArgumentNotValidException : {}",e.getMessage());
+
         Map<String , String> fieldsErrors = e.getBindingResult()
                 .getFieldErrors()
                 .stream()

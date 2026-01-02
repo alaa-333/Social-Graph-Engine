@@ -2,7 +2,6 @@ package com.example.socialgraphengine.controller;
 
 import com.example.socialgraphengine.dto.request.AuthRequest;
 import com.example.socialgraphengine.dto.request.UserCreateRequest;
-import com.example.socialgraphengine.dto.response.TokenResponse;
 import com.example.socialgraphengine.service.imple.AuthServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

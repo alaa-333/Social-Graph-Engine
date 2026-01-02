@@ -3,7 +3,6 @@ package com.example.socialgraphengine.mapper;
 import com.example.socialgraphengine.dto.request.UserCreateRequest;
 import com.example.socialgraphengine.dto.request.UserUpdateRequest;
 import com.example.socialgraphengine.dto.response.UserResponse;
-import com.example.socialgraphengine.dto.response.UserSearchResponse;
 import com.example.socialgraphengine.model.User;
 import com.example.socialgraphengine.model.enums.Role;
 import org.mapstruct.*;
@@ -24,18 +23,9 @@ public interface UserMapper {
     @Mapping(target = "roles" , expression = "java(Set.of(Role.ROLE_USER)")
     User toEntity(UserCreateRequest request);
 
-    // ======== To Response ===========
 
+    // ======== To Response ===========
     UserResponse toResponse(User user);
-// res
-//    Long id,
-//    String email,
-//    String firstName, ->account.acountDeta.personalIfo.<-
-//    String lastName,
-//    String profilePictureUrl, -> account. <-
-//    String headline
-//    @Mapping(target ="firstName" )
-//    UserSearchResponse toSearchResponse(User user);
 
     default void updateUserFromDto(@MappingTarget User user , UserUpdateRequest request)
     {

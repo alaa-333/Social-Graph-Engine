@@ -30,8 +30,10 @@ public enum ErrorCode {
     REQUEST_TIMEOUT("SYS-005", "Request timeout", HttpStatus.REQUEST_TIMEOUT),
     DATA_INTEGRITY_VIOLATION("SYS-006", "Data integrity violation", HttpStatus.CONFLICT),
     DATABASE_UNAVAILABLE("SYS-003", "Database connection failed", HttpStatus.SERVICE_UNAVAILABLE),
-    EXTERNAL_SERVICE_ERROR("SYS-004", "External service unavailable", HttpStatus.SERVICE_UNAVAILABLE);
+    EXTERNAL_SERVICE_ERROR("SYS-004", "External service unavailable", HttpStatus.SERVICE_UNAVAILABLE),
 
+    // User Errors
+    USER_NOT_FOUND("USER-001", "User not found" , HttpStatus.NOT_FOUND);
 
 
     private final String code;

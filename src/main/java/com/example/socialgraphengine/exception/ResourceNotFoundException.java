@@ -15,7 +15,5 @@ public class ResourceNotFoundException extends BusinessException {
         this(errorCode.getMessage() , errorCode);
     }
 
-    public ResourceNotFoundException(String message, Throwable cause) {
-        super(message, cause);
-    }
+
 }

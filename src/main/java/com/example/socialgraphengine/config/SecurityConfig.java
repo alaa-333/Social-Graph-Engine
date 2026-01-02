@@ -1,8 +1,8 @@
 package com.example.socialgraphengine.config;
 
-import com.example.socialgraphengine.filters.JwtAuthenticationFilter;
+import com.example.socialgraphengine.filter.JwtAuthenticationFilter;
 import com.example.socialgraphengine.repository.UserRepository;
-import com.example.socialgraphengine.service.imple.UserDetailsServiceImpl;
+import com.example.socialgraphengine.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,7 +29,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsServiceImpl userDetailsService;
+    private final CustomUserDetailsService userDetailsImpl;
     private final UserRepository userRepository;
 
 
@@ -65,7 +65,7 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService()
     {
-        return new UserDetailsServiceImpl(userRepository);
+        return new CustomUserDetailsService();
     }
 
     @Bean

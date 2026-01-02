@@ -15,7 +15,6 @@ public class ValidationException extends BusinessException {
     public ValidationException(ErrorCode errorCode) {
         this(errorCode.getMessage() , errorCode);
     }
-    public ValidationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+
+
 }

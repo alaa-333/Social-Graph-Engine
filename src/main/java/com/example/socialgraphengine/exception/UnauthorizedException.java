@@ -12,10 +12,7 @@ public class UnauthorizedException extends BusinessException {
         super(message, status , errorCode);
     }
     public UnauthorizedException( HttpStatus status , ErrorCode errorCode) {
-        this(errorCode.getMessage(),status , errorCode);
+        this(errorCode.getMessage(), status, errorCode);
     }
 
-    public UnauthorizedException(String message, Throwable cause) {
-        super(message, cause);
-    }
 }

@@ -223,6 +223,22 @@ Authorization: Bearer <your-jwt-token>
 ```
 
 ---
+## ▎LLMs I Worked With
+
+<br/>
+
+<div align="center">
+
+| AI Assistant | Provider | Role |
+|:-------------|:---------|:-----|
+| 🤖 **Claude** | Anthropic | Code review, architecture guidance, documentation |
+| 🚀 **Antigravity** | Google DeepMind | Pair programming, debugging |
+
+</div>
+
+<br/>
+
+> These AI assistants helped accelerate development by providing code suggestions, explaining complex concepts, generating documentation
 
 
 ---
